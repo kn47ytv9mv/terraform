@@ -23,6 +23,7 @@ type ModuleCall struct {
 
 	Count   hcl.Expression
 	ForEach hcl.Expression
+	Enabled hcl.Expression
 
 	Providers []PassedProviderConfig
 
@@ -82,6 +83,19 @@ func decodeModuleBlock(block *hcl.Block, override bool) (*ModuleCall, hcl.Diagno
 		}
 
 		mc.ForEach = attr.Expr
+	}
+
+	if attr, exists := content.Attributes["enabled"]; exists {
+		if mc.Count != nil || mc.ForEach != nil {
+			diags = append(diags, &hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  `Invalid combination of "enabled" and "count"/"for_each"`,
+				Detail:   `The "enabled" meta-argument is mutually-exclusive with "count" and "for_each": use "enabled" only to toggle a single module call on or off, or "count"/"for_each" to control how many instances are created.`,
+				Subject:  &attr.NameRange,
+			})
+		}
+
+		mc.Enabled = attr.Expr
 	}
 
 	if attr, exists := content.Attributes["depends_on"]; exists {
@@ -215,6 +229,9 @@ var moduleBlockSchema = &hcl.BodySchema{
 		},
 		{
 			Name: "for_each",
+		},
+		{
+			Name: "enabled",
 		},
 		{
 			Name: "depends_on",

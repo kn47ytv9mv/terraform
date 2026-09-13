@@ -207,5 +207,33 @@ func checkModuleExperiments(m *Module) hcl.Diagnostics {
 			}
 		}
 	*/
+
+	if !m.ActiveExperiments.Has(experiments.EnabledMetaArgument) {
+		requireExperiment := func(expr hcl.Expression) {
+			if expr == nil {
+				return
+			}
+			diags = append(diags, &hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  `The "enabled" meta-argument is experimental`,
+				Detail:   "This feature is currently an opt-in experiment, subject to change in future releases based on feedback.\n\nActivate the feature for this module by adding enabled_meta_argument to the list of active experiments.",
+				Subject:  expr.Range().Ptr(),
+			})
+		}
+
+		for _, rc := range m.ManagedResources {
+			requireExperiment(rc.Enabled)
+		}
+		for _, rc := range m.DataResources {
+			requireExperiment(rc.Enabled)
+		}
+		for _, rc := range m.EphemeralResources {
+			requireExperiment(rc.Enabled)
+		}
+		for _, mc := range m.ModuleCalls {
+			requireExperiment(mc.Enabled)
+		}
+	}
+
 	return diags
 }

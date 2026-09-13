@@ -190,6 +190,8 @@ func (n *NodeAbstractResource) References() []*addrs.Reference {
 	result = append(result, refs...)
 	refs, _ = langrefs.ReferencesInExpr(addrs.ParseRef, n.Config.ForEach)
 	result = append(result, refs...)
+	refs, _ = langrefs.ReferencesInExpr(addrs.ParseRef, n.Config.Enabled)
+	result = append(result, refs...)
 
 	for _, expr := range n.Config.TriggersReplacement {
 		refs, _ = langrefs.ReferencesInExpr(addrs.ParseRef, expr)
@@ -534,6 +536,22 @@ func (n *NodeAbstractResource) recordResourceData(ctx EvalContext, addr addrs.Ab
 			expander.SetResourceForEach(addr.Module, n.Addr.Resource, forEach)
 		} else {
 			expander.SetResourceForEachUnknown(addr.Module, n.Addr.Resource)
+		}
+
+	case n.Config != nil && n.Config.Enabled != nil:
+		enabled, known, enabledDiags := evaluateEnabledExpression(n.Config.Enabled, ctx, allowUnknown)
+		diags = diags.Append(enabledDiags)
+		if enabledDiags.HasErrors() {
+			return diags
+		}
+
+		switch {
+		case !known:
+			expander.SetResourceCountUnknown(addr.Module, n.Addr.Resource)
+		case enabled:
+			expander.SetResourceSingle(addr.Module, n.Addr.Resource)
+		default:
+			expander.SetResourceCount(addr.Module, n.Addr.Resource, 0)
 		}
 
 	default:

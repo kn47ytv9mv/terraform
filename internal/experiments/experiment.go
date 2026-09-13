@@ -25,11 +25,13 @@ const (
 	PreconditionsPostconditions    = Experiment("preconditions_postconditions")
 	EphemeralValues                = Experiment("ephemeral_values")
 	UnknownInstances               = Experiment("unknown_instances")
+	EnabledMetaArgument            = Experiment("enabled_meta_argument")
 )
 
 func init() {
 	// Each experiment constant defined above must be registered here as either
 	// a current or a concluded experiment.
+	registerCurrentExperiment(EnabledMetaArgument)
 	registerConcludedExperiment(UnknownInstances, "Unknown instances are being rolled into a larger feature for deferring unready resources and modules.")
 	registerConcludedExperiment(VariableValidation, "Custom variable validation can now be used by default, without enabling an experiment.")
 	registerConcludedExperiment(VariableValidationCrossRef, "Input variable validation rules may now refer to other objects in the same module without enabling any experiment.")

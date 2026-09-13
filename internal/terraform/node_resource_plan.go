@@ -105,6 +105,7 @@ func (n *nodeExpandPlannableResource) DynamicExpand(ctx EvalContext) (*Graph, tf
 	if n.Config != nil {
 		diags = diags.Append(validateMetaSelfRef(n.Addr.Resource, n.Config.Count))
 		diags = diags.Append(validateMetaSelfRef(n.Addr.Resource, n.Config.ForEach))
+		diags = diags.Append(validateMetaSelfRef(n.Addr.Resource, n.Config.Enabled))
 		if diags.HasErrors() {
 			return nil, diags
 		}

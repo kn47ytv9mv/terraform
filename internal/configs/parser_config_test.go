@@ -124,6 +124,31 @@ func TestParserLoadConfigFileFailureMessages(t *testing.T) {
 			`Invalid combination of "count" and "for_each"`,
 		},
 		{
+			"invalid-files/resource-enabled-and-count.tf",
+			hcl.DiagError,
+			`Invalid combination of "enabled" and "count"/"for_each"`,
+		},
+		{
+			"invalid-files/resource-enabled-and-for_each.tf",
+			hcl.DiagError,
+			`Invalid combination of "enabled" and "count"/"for_each"`,
+		},
+		{
+			"invalid-files/module-call-enabled-and-count.tf",
+			hcl.DiagError,
+			`Invalid combination of "enabled" and "count"/"for_each"`,
+		},
+		{
+			"invalid-files/data-enabled-and-count.tf",
+			hcl.DiagError,
+			`Invalid combination of "enabled" and "count"/"for_each"`,
+		},
+		{
+			"invalid-files/ephemeral-enabled-and-count.tf",
+			hcl.DiagError,
+			`Invalid combination of "enabled" and "count"/"for_each"`,
+		},
+		{
 			"invalid-files/resource-lifecycle-badbool.tf",
 			hcl.DiagError,
 			"Unsuitable value type",

@@ -57,7 +57,7 @@ func (n *nodeExpandModule) References() []*addrs.Reference {
 
 	refs = append(refs, n.DependsOn()...)
 
-	// Expansion only uses the count and for_each expressions, so this
+	// Expansion only uses the count, for_each, and enabled expressions, so this
 	// particular graph node only refers to those.
 	// Individual variable values in the module call definition might also
 	// refer to other objects, but that's handled by
@@ -75,6 +75,10 @@ func (n *nodeExpandModule) References() []*addrs.Reference {
 	if n.ModuleCall.ForEach != nil {
 		forEachRefs, _ := langrefs.ReferencesInExpr(addrs.ParseRef, n.ModuleCall.ForEach)
 		refs = append(refs, forEachRefs...)
+	}
+	if n.ModuleCall.Enabled != nil {
+		enabledRefs, _ := langrefs.ReferencesInExpr(addrs.ParseRef, n.ModuleCall.Enabled)
+		refs = append(refs, enabledRefs...)
 	}
 	return refs
 }
@@ -160,6 +164,21 @@ func (n *nodeExpandModule) Execute(globalCtx EvalContext, op walkOperation) (dia
 				expander.SetModuleForEach(module, call, forEach)
 			} else {
 				expander.SetModuleForEachUnknown(module, call)
+			}
+
+		case n.ModuleCall.Enabled != nil:
+			enabled, known, enDiags := evaluateEnabledExpression(n.ModuleCall.Enabled, moduleCtx, allowUnknown)
+			diags = diags.Append(enDiags)
+			if diags.HasErrors() {
+				return diags
+			}
+			switch {
+			case !known:
+				expander.SetModuleCountUnknown(module, call)
+			case enabled:
+				expander.SetModuleSingle(module, call)
+			default:
+				expander.SetModuleCount(module, call, 0)
 			}
 
 		default:

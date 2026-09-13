@@ -53,8 +53,8 @@ func (a *Analyzer) ReferencesFromResourceInstance(addr addrs.AbsResourceInstance
 }
 
 // ReferencesFromResourceRepetition returns the references from the given
-// resource's for_each or count expression, or an empty set if the resource
-// doesn't use repetition.
+// resource's for_each, count, or enabled expression, or an empty set if the
+// resource doesn't use repetition (or enabled).
 //
 // This is a special-case sort of helper for use in situations where an
 // expression might refer to count.index, each.key, or each.value, and thus
@@ -83,6 +83,9 @@ func (a *Analyzer) ReferencesFromResourceRepetition(addr addrs.AbsResource) []Re
 		return absoluteRefs(addr.Module, refs)
 	case rc.Count != nil:
 		refs, _ := langrefs.ReferencesInExpr(addrs.ParseRef, rc.Count)
+		return absoluteRefs(addr.Module, refs)
+	case rc.Enabled != nil:
+		refs, _ := langrefs.ReferencesInExpr(addrs.ParseRef, rc.Enabled)
 		return absoluteRefs(addr.Module, refs)
 	default:
 		return nil

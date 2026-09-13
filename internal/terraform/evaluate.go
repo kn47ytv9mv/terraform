@@ -560,6 +560,13 @@ func (d *evaluationStateData) GetModule(addr addrs.ModuleCall, rng tfdiags.Sourc
 		return cty.ObjectVal(attrs), diags
 	}
 
+	if callConfig.Enabled != nil && len(instKeys) == 0 {
+		// A disabled module is a zero-instance count expansion internally,
+		// which would otherwise fall through to an empty list/tuple below.
+		// enabled stays object-shaped even when absent, so return null.
+		return cty.NullVal(instTy), diags
+	}
+
 	switch instKeyType {
 
 	case addrs.NoKeyType:
@@ -725,6 +732,14 @@ func (d *evaluationStateData) GetResource(addr addrs.Resource, rng tfdiags.Sourc
 
 	switch addr.Mode {
 	case addrs.EphemeralResourceMode:
+		if config.Enabled != nil {
+			// Same reasoning as the GetModule case above: stay object-shaped.
+			keyType, knownKeys, unknownKeys := d.Evaluator.Instances.ResourceInstanceKeys(addr.Absolute(d.ModulePath))
+			if !unknownKeys && keyType != addrs.NoKeyType && len(knownKeys) == 0 {
+				return cty.NullVal(ty).Mark(marks.Ephemeral), diags
+			}
+		}
+
 		// FIXME: This does not yet work with deferrals, and it would be nice to
 		// find some way to refactor this so that the following code is not so
 		// tethered to the current implementation details. Instead we should
@@ -844,6 +859,10 @@ func (d *evaluationStateData) GetResource(addr addrs.Resource, rng tfdiags.Sourc
 				return cty.EmptyTupleVal, diags
 			case config.ForEach != nil:
 				return cty.EmptyObjectVal, diags
+			case config.Enabled != nil:
+				// Stays object-shaped (unlike count/for_each): a disabled
+				// resource is null, so try()/coalesce() and ternaries work.
+				return cty.NullVal(ty), diags
 			default:
 				// While we can reference an expanded resource with 0
 				// instances, we cannot reference instances that do not exist.

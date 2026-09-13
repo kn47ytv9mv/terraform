@@ -23,6 +23,7 @@ type Resource struct {
 	Config  hcl.Body
 	Count   hcl.Expression
 	ForEach hcl.Expression
+	Enabled hcl.Expression
 
 	ProviderConfigRef *ProviderConfigRef
 	Provider          addrs.Provider
@@ -166,6 +167,18 @@ func decodeResourceBlock(block *hcl.Block, override bool, allowExperiments bool)
 				Severity: hcl.DiagError,
 				Summary:  `Invalid combination of "count" and "for_each"`,
 				Detail:   `The "count" and "for_each" meta-arguments are mutually-exclusive, only one should be used to be explicit about the number of resources to be created.`,
+				Subject:  &attr.NameRange,
+			})
+		}
+	}
+
+	if attr, exists := content.Attributes["enabled"]; exists {
+		r.Enabled = attr.Expr
+		if r.Count != nil || r.ForEach != nil {
+			diags = append(diags, &hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  `Invalid combination of "enabled" and "count"/"for_each"`,
+				Detail:   `The "enabled" meta-argument is mutually-exclusive with "count" and "for_each": use "enabled" only to toggle a single resource on or off, or "count"/"for_each" to control how many instances are created.`,
 				Subject:  &attr.NameRange,
 			})
 		}
@@ -438,6 +451,18 @@ func decodeEphemeralBlock(block *hcl.Block, override bool) (*Resource, hcl.Diagn
 		}
 	}
 
+	if attr, exists := content.Attributes["enabled"]; exists {
+		r.Enabled = attr.Expr
+		if r.Count != nil || r.ForEach != nil {
+			diags = append(diags, &hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  `Invalid combination of "enabled" and "count"/"for_each"`,
+				Detail:   `The "enabled" meta-argument is mutually-exclusive with "count" and "for_each": use "enabled" only to toggle a single ephemeral resource on or off, or "count"/"for_each" to control how many instances are created.`,
+				Subject:  &attr.NameRange,
+			})
+		}
+	}
+
 	if attr, exists := content.Attributes["provider"]; exists {
 		var providerDiags hcl.Diagnostics
 		r.ProviderConfigRef, providerDiags = decodeProviderConfigRef(attr.Expr, "provider")
@@ -606,6 +631,26 @@ func decodeDataBlock(block *hcl.Block, override, nested bool) (*Resource, hcl.Di
 			Severity: hcl.DiagError,
 			Summary:  `Invalid "for_each" attribute`,
 			Detail:   `The "count" and "for_each" meta-arguments are not supported within nested data blocks.`,
+			Subject:  &attr.NameRange,
+		})
+	}
+
+	if attr, exists := content.Attributes["enabled"]; exists && !nested {
+		r.Enabled = attr.Expr
+		if r.Count != nil || r.ForEach != nil {
+			diags = append(diags, &hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  `Invalid combination of "enabled" and "count"/"for_each"`,
+				Detail:   `The "enabled" meta-argument is mutually-exclusive with "count" and "for_each": use "enabled" only to toggle a single data resource on or off, or "count"/"for_each" to control how many instances are created.`,
+				Subject:  &attr.NameRange,
+			})
+		}
+	} else if exists && nested {
+		// We don't allow enabled attributes in nested data blocks.
+		diags = append(diags, &hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  `Invalid "enabled" attribute`,
+			Detail:   `The "count", "for_each", and "enabled" meta-arguments are not supported within nested data blocks.`,
 			Subject:  &attr.NameRange,
 		})
 	}
@@ -944,6 +989,9 @@ var commonResourceAttributes = []hcl.AttributeSchema{
 	},
 	{
 		Name: "for_each",
+	},
+	{
+		Name: "enabled",
 	},
 	{
 		Name: "provider",
